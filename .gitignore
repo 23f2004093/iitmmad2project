@@ -1,11 +1,21 @@
 .DS_Store
-node_modules
+node_modules/
 /dist
-
+/frontend/node_modules/
 
 # local env files
+.env
 .env.local
 .env.*.local
+backend/.env
+
+# SQLite databases
+*.db
+backend/*.db
+
+# Uploaded student files
+backend/uploads/
+uploads/
 
 # Log files
 npm-debug.log*
