@@ -1,0 +1,5 @@
+/* Custom CSS overrides to be applied alongside Bootstrap */
+body {
+    background-color: #f8f9fa;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
