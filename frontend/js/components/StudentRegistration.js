@@ -70,9 +70,40 @@ export default {
             this.errorMessage = '';
             console.log("Handle student registration called:", this.name);
             
-            // TODO: Implement the fetch API call to '/api/auth/register/student' (POST) here.
-            // On success: redirect back to login page: this.$router.push('/')
-            // On error: set this.errorMessage = data.message
+            try {
+                const payload = {
+                    user_data: {
+                        email: this.email,
+                        password: this.password
+                    },
+                    profile_data: {
+                        roll_number: this.rollNumber,
+                        name: this.name,
+                        department: this.department,
+                        cgpa: this.cgpa
+                    }
+                };
+
+                const response = await fetch('/api/auth/register/student', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert("Registration successful! Please sign in.");
+                    this.$router.push('/');
+                } else {
+                    this.errorMessage = data.message || "Registration failed";
+                }
+            } catch (error) {
+                console.error("Registration fetch error:", error);
+                this.errorMessage = "Server connection failed. Is the backend running?";
+            }
         }
     }
 };

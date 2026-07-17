@@ -94,11 +94,33 @@ export default {
     methods: {
         async fetchDashboardData() {
             console.log("Fetching student dashboard data...");
-            // TODO: Fetch student profile (GET '/api/students/me'), active drives (GET '/api/jobs/'),
-            // and applications list (GET '/api/students/applications') and populate variables:
-            //   - this.student
-            //   - this.drives
-            //   - this.applications
+            try {
+                // 1. Fetch Student Profile
+                const profileRes = await fetch('/api/students/me');
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    this.student = profileData.student;
+                } else if (profileRes.status === 401) {
+                    this.$router.push('/');
+                    return;
+                }
+
+                // 2. Fetch Active Placement Drives
+                const drivesRes = await fetch('/api/jobs/');
+                if (drivesRes.ok) {
+                    const drivesData = await drivesRes.json();
+                    this.drives = drivesData.jobs;
+                }
+
+                // 3. Fetch Applications History
+                const appsRes = await fetch('/api/students/applications');
+                if (appsRes.ok) {
+                    const appsData = await appsRes.json();
+                    this.applications = appsData.applications;
+                }
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            }
         },
         onFileChange(e) {
             this.resumeFile = e.target.files[0];
@@ -107,19 +129,74 @@ export default {
             if (!this.resumeFile) return;
             console.log("Uploading file:", this.resumeFile.name);
             
-            // TODO: Construct FormData and send it via POST fetch request to '/api/students/resume'
-            // On success: call this.fetchDashboardData()
+            const formData = new FormData();
+            formData.append('resume', this.resumeFile);
+
+            try {
+                const response = await fetch('/api/students/resume', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    alert("Resume uploaded successfully!");
+                    this.resumeFile = null;
+                    this.fetchDashboardData();
+                } else {
+                    alert(data.message || "Failed to upload resume");
+                }
+            } catch (error) {
+                console.error("Resume upload error:", error);
+                alert("Server connection failed during resume upload.");
+            }
         },
         async applyForDrive(driveId) {
             console.log("Applying to job ID:", driveId);
             
-            // TODO: Send POST fetch request to `/api/jobs/${driveId}/apply`
-            // On success: call this.fetchDashboardData()
+            try {
+                const response = await fetch(`/api/jobs/${driveId}/apply`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    alert("Application submitted successfully!");
+                    this.fetchDashboardData();
+                } else {
+                    alert(data.message || "Failed to apply");
+                }
+            } catch (error) {
+                console.error("Apply drive error:", error);
+                alert("Server connection failed during application process.");
+            }
         },
         async triggerCSVExport() {
             console.log("Triggering CSV export task...");
             
-            // TODO: Send POST fetch request to '/api/students/export-applications' to queue celery task
+            try {
+                const response = await fetch('/api/students/export-applications', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `applications_history_${this.student.roll_number || 'student'}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const data = await response.json();
+                    alert(data.message || "Failed to export CSV file.");
+                }
+            } catch (error) {
+                console.error("CSV export error:", error);
+                alert("Server connection failed during CSV export.");
+            }
         },
         hasApplied(driveId) {
             return this.applications.some(app => app.job_id === driveId);

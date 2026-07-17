@@ -60,11 +60,38 @@ export default {
     methods: {
         async handleRegister() {
             this.errorMessage = '';
-            console.log("Handle company registration called:", this.companyName);
-            
-            // TODO: Implement the fetch API call to '/api/auth/register/recruiter' (POST) here.
-            // On success: redirect back to login page: this.$router.push('/')
-            // On error: set this.errorMessage = data.message
+            try {
+                const payload = {
+                    user_data: {
+                        email: this.email,
+                        password: this.password
+                    },
+                    profile_data: {
+                        companyName: this.companyName,
+                        hrContact: this.hrContact,
+                        website: this.website,
+                        description: this.description
+                    }
+                };
+                const response = await fetch('/api/auth/register/company', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert("Registration successful! Please sign in.");
+                    this.$router.push('/');
+                } else {
+                    this.errorMessage = data.message || "Registration failed";
+                }
+            } catch (error) {
+                this.errorMessage = "Server connection failed. Is the backend running?";
+            }
         }
     }
-};
+}
