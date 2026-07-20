@@ -16,7 +16,6 @@ export default {
         <div>
             <h2 class="fw-bold mb-4">Placement Cell Administrator Dashboard</h2>
             
-            <!-- Statistics Cards -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <div class="card border-0 shadow-sm p-3 rounded-3 bg-primary text-white text-center">
@@ -45,7 +44,6 @@ export default {
             </div>
 
             <div class="row">
-                <!-- Manage Registrations -->
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm p-4 rounded-4 mb-4">
                         <h5 class="fw-bold text-warning mb-3">Pending Company Registrations</h5>
@@ -60,7 +58,6 @@ export default {
                     </div>
                 </div>
 
-                <!-- Manage Drives -->
                 <div class="col-md-6">
                     <div class="card border-0 shadow-sm p-4 rounded-4">
                         <h5 class="fw-bold text-danger mb-3">Pending Placement Drives</h5>
@@ -86,24 +83,64 @@ export default {
     methods: {
         async fetchAdminData() {
             console.log("Fetching admin portal statistics and approvals...");
-            
-            // TODO: Fetch statistics (GET '/api/admin/stats'), pending companies (GET '/api/admin/pending-recruiters'),
-            // and pending drives (GET '/api/admin/pending-drives'). Populate variables:
-            //   - this.stats
-            //   - this.pendingCompanies
-            //   - this.pendingDrives
+            try {
+                const statsres = await fetch('/api/admin/stats');
+                if (statsres.ok) {
+                    const statsdata = await statsres.json();
+                    this.stats = statsdata.stats;
+                } else if (statsres.status === 403) {
+                    this.$router.push('/');
+                    return;
+                }
+
+                const compres = await fetch('/api/admin/pending-recruiters');
+                if (compres.ok) {
+                    const compdata = await compres.json();
+                    this.pendingCompanies = compdata.pending_recruiters;
+                }
+
+                const driveres = await fetch('/api/admin/pending-drives');
+                if (driveres.ok) {
+                    const drivedata = await driveres.json();
+                    this.pendingDrives = drivedata.pending_drives;
+                }
+            } catch (error) {
+                console.error("error fetching admin data:", error);
+            }
         },
+
         async approveCompany(id) {
             console.log("Approving company ID:", id);
-            
-            // TODO: Send POST fetch request to `/api/admin/approve-recruiter/${id}`
-            // On success: call this.fetchAdminData()
+            try {
+                const response = await fetch(`/api/admin/approve-recruiter/${id}`, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    alert("Recruiter approved successfully");
+                    this.fetchAdminData();
+                } else {
+                    alert(data.message || "Failed to approve recruiter.");
+                }
+            } catch (error) {
+                console.error("error approving company:", error);
+                alert("Server connection failed during company approval.");
+            }
         },
+
         async approveDrive(id) {
             console.log("Approving placement drive ID:", id);
-            
-            // TODO: Send POST fetch request to `/api/admin/approve-drive/${id}`
-            // On success: call this.fetchAdminData()
+            try {
+                const response = await fetch(`/api/admin/approve-drive/${id}`, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    alert("Placement drive approved");
+                    this.fetchAdminData();
+                } else {
+                    alert(data.message || "Failed to approve drive.");
+                }
+            } catch (error) {
+                console.error("error approving drive:", error);
+                alert("Server connection failed during drive approval.");
+            }
         }
     }
 };

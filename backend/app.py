@@ -4,6 +4,7 @@ from database import db
 from routes.auth import auth_bp
 from routes.students import students_bp
 from routes.jobs import jobs_bp
+from routes.admin import admin_bp
 import os
 
 # Import models so Flask-SQLAlchemy metadata discovers them on db.create_all()
@@ -26,6 +27,7 @@ with app.app_context():
     db.create_all()
 
 # Register Blueprints
+app.register_blueprint(admin_bp,url_prefix="/api/admin")
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(students_bp, url_prefix="/api/students")
 app.register_blueprint(jobs_bp, url_prefix="/api/jobs")
