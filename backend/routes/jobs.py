@@ -4,25 +4,23 @@ from models.user import User
 from models.job import Job
 from models.application import Application
 from datetime import datetime
+from utils.cache import cached_api
 
 jobs_bp = Blueprint("jobs", __name__)
 
 def get_current_user():
-    """
-    Helper function to authenticate user via the Flask session cookie.
-    """
     user_id = session.get("user_id")
     if not user_id or user_id == "admin":
         return None
     return User.query.get(int(user_id))
 
 @jobs_bp.route("/", methods=["GET"])
+@cached_api(key_prefix="jobs_approved", timeout=120)
 def get_approved_jobs():
     user = get_current_user()
     if not user:
         return jsonify({"status": "error", "message": "Unauthorized access"}), 401
 
-    # Fetch all jobs that are approved by the administrator
     approved_jobs = Job.query.filter_by(status="approved").all()
     jobs_data = []
     for job in approved_jobs:
@@ -54,28 +52,23 @@ def apply_to_job(job_id):
     if not profile:
         return jsonify({"status": "error", "message": "Student profile not found"}), 404
 
-    # 1. Validate if job exists and is approved
     job = Job.query.get(job_id)
     if not job or job.status != "approved":
         return jsonify({"status": "error", "message": "Placement drive is either invalid or not approved"}), 404
 
-    # 2. Check if student has already applied
     existing_app = Application.query.filter_by(student_id=profile.id, job_id=job_id).first()
     if existing_app:
         return jsonify({"status": "error", "message": "You have already applied to this placement drive"}), 400
 
-    # 3. Check CGPA eligibility criteria
     if profile.cgpa is None or float(profile.cgpa) < float(job.min_cgpa):
         return jsonify({
             "status": "error", 
             "message": f"Your CGPA ({profile.cgpa}) does not meet the minimum eligibility criteria ({job.min_cgpa}) for this job."
         }), 400
 
-    # 4. Check if resume is uploaded
     if not profile.resume_path:
         return jsonify({"status": "error", "message": "Please upload your resume before applying."}), 400
 
-    # 5. Create new application
     try:
         new_application = Application(
             student_id=profile.id,

@@ -9,137 +9,302 @@ export default {
                 placement_percentage: 0
             },
             pendingCompanies: [],
-            pendingDrives: []
+            pendingDrives: [],
+            allApplications: [],
+            allStudents: [],
+            searchQuery: '',
+            searchResults: {
+                students: [],
+                companies: []
+            },
+            isSearching: false
         };
     },
     template: `
         <div>
-            <h2 class="fw-bold mb-4">Placement Cell Administrator Dashboard</h2>
-            
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm p-3 rounded-3 bg-primary text-white text-center">
-                        <h5>Total Students</h5>
-                        <h2 class="fw-bold">{{ stats.total_students }}</h2>
-                    </div>
+            <!-- Unified Header with Logout Button -->
+            <div class="dashboard-header">
+                <div>
+                    <h2>Admin Dashboard</h2>
+                    <p>Overview of system metrics, student profiles, recruiter registrations, and job applications</p>
                 </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm p-3 rounded-3 bg-info text-white text-center">
-                        <h5>Registered Companies</h5>
-                        <h2 class="fw-bold">{{ stats.total_companies }}</h2>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm p-3 rounded-3 bg-success text-white text-center">
-                        <h5>Placement Drives</h5>
-                        <h2 class="fw-bold">{{ stats.total_jobs }}</h2>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm p-3 rounded-3 bg-dark text-white text-center">
-                        <h5>Placed %</h5>
-                        <h2 class="fw-bold">{{ parseFloat(stats.placement_percentage).toFixed(1) }}%</h2>
-                    </div>
+                <div>
+                    <button @click="handleLogout" class="btn-logout">Logout</button>
                 </div>
             </div>
+            
+            <!-- Statistics Overview -->
+            <div>
+                <p>
+                    <strong>Total Students:</strong> {{ stats.total_students }} | 
+                    <strong>Approved Companies:</strong> {{ stats.total_companies }} | 
+                    <strong>Active Drives:</strong> {{ stats.total_jobs }} | 
+                    <strong>Placement %:</strong> {{ parseFloat(stats.placement_percentage).toFixed(1) }}%
+                </p>
+            </div>
+            <hr>
 
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm p-4 rounded-4 mb-4">
-                        <h5 class="fw-bold text-warning mb-3">Pending Company Registrations</h5>
-                        <div class="list-group list-group-flush">
-                            <div v-for="comp in pendingCompanies" :key="comp.id" class="list-group-item py-3">
-                                <h6 class="fw-bold mb-1">{{ comp.company_name }}</h6>
-                                <p class="small text-muted mb-2">{{ comp.description }}</p>
-                                <button @click="approveCompany(comp.id)" class="btn btn-sm btn-success">Approve Recruiter</button>
-                            </div>
-                            <div v-if="pendingCompanies.length === 0" class="text-muted text-center py-2">No pending company registrations.</div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Search Section -->
+            <div>
+                <h3>Search Portal</h3>
+                <form @submit.prevent="handleSearch">
+                    <input v-model="searchQuery" type="text" placeholder="Search student or company..." required>
+                    <button type="submit">Search</button>
+                    <button v-if="isSearching" @click="clearSearch" type="button">Clear</button>
+                </form>
 
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm p-4 rounded-4">
-                        <h5 class="fw-bold text-danger mb-3">Pending Placement Drives</h5>
-                        <div class="list-group list-group-flush">
-                            <div v-for="drive in pendingDrives" :key="drive.id" class="list-group-item py-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h6 class="fw-bold mb-0">{{ drive.title }}</h6>
-                                    <span class="badge bg-secondary">{{ drive.min_cgpa }} CGPA</span>
-                                </div>
-                                <p class="small text-muted mb-2">Posted by Company ID: {{ drive.company_id }}</p>
-                                <button @click="approveDrive(drive.id)" class="btn btn-sm btn-danger">Approve Drive</button>
-                            </div>
-                            <div v-if="pendingDrives.length === 0" class="text-muted text-center py-2">No pending placement drives.</div>
-                        </div>
-                    </div>
+                <div v-if="isSearching" style="margin-top: 15px;">
+                    <h4>Matching Students</h4>
+                    <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Roll No</th>
+                                <th>Department</th>
+                                <th>CGPA</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="s in searchResults.students" :key="s.user_id">
+                                <td>{{ s.name }}</td>
+                                <td>{{ s.roll_number }}</td>
+                                <td>{{ s.department }}</td>
+                                <td>{{ s.cgpa }}</td>
+                                <td>{{ s.is_active ? 'Active' : 'Blacklisted' }}</td>
+                                <td>
+                                    <button @click="toggleUserStatus(s.user_id)">
+                                        {{ s.is_active ? 'Blacklist' : 'Reactivate' }}
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="searchResults.students.length === 0">
+                                <td colspan="6">No matching students found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin-top: 15px;">Matching Companies</h4>
+                    <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>HR Contact</th>
+                                <th>Website</th>
+                                <th>Approval</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="c in searchResults.companies" :key="c.user_id">
+                                <td>{{ c.company_name }}</td>
+                                <td>{{ c.hr_contact }}</td>
+                                <td>{{ c.website }}</td>
+                                <td>{{ c.is_approved ? 'Approved' : 'Pending' }}</td>
+                                <td>{{ c.is_active ? 'Active' : 'Blacklisted' }}</td>
+                                <td>
+                                    <button @click="toggleUserStatus(c.user_id)">
+                                        {{ c.is_active ? 'Blacklist' : 'Reactivate' }}
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="searchResults.companies.length === 0">
+                                <td colspan="6">No matching companies found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+            </div>
+            <hr>
+
+            <!-- Pending Approvals & Rejections -->
+            <div>
+                <h3>Pending Approvals</h3>
+                
+                <h4>Pending Company Registrations</h4>
+                <ul>
+                    <li v-for="comp in pendingCompanies" :key="comp.id" style="margin-bottom: 10px;">
+                        <strong>{{ comp.company_name }}</strong> (HR: {{ comp.hr_contact }}, Website: {{ comp.website }})
+                        <br>
+                        <button @click="approveCompany(comp.id)">Approve Recruiter</button>
+                        <button @click="rejectCompany(comp.id)">Reject</button>
+                    </li>
+                    <li v-if="pendingCompanies.length === 0">No pending company registrations.</li>
+                </ul>
+
+                <h4>Pending Placement Drives</h4>
+                <ul>
+                    <li v-for="drive in pendingDrives" :key="drive.id" style="margin-bottom: 10px;">
+                        <strong>{{ drive.title }}</strong> - {{ drive.company_name }} (Package: {{ drive.package_ctc }}, Min CGPA: {{ drive.min_cgpa }})
+                        <br>
+                        <button @click="approveDrive(drive.id)">Approve Drive</button>
+                        <button @click="rejectDrive(drive.id)">Reject</button>
+                    </li>
+                    <li v-if="pendingDrives.length === 0">No pending placement drives.</li>
+                </ul>
+            </div>
+            <hr>
+
+            <!-- Student Details Directory -->
+            <div>
+                <h3>All Student Details</h3>
+                <button @click="fetchAllStudents">Refresh Students</button>
+                <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Roll Number</th>
+                            <th>Department</th>
+                            <th>CGPA</th>
+                            <th>Resume</th>
+                            <th>Account Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="s in allStudents" :key="s.user_id">
+                            <td>{{ s.name }}</td>
+                            <td>{{ s.roll_number }}</td>
+                            <td>{{ s.department }}</td>
+                            <td>{{ s.cgpa }}</td>
+                            <td>
+                                <a v-if="s.resume_path" :href="'/' + s.resume_path" target="_blank">View PDF</a>
+                                <span v-else>No PDF</span>
+                            </td>
+                            <td>{{ s.is_active ? 'Active' : 'Blacklisted' }}</td>
+                            <td>
+                                <button @click="toggleUserStatus(s.user_id)">
+                                    {{ s.is_active ? 'Blacklist' : 'Reactivate' }}
+                                </button>
+                            </td>
+                        </tr>
+                        <tr v-if="allStudents.length === 0">
+                            <td colspan="7">No students registered yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <hr>
+
+            <!-- All Applications History Table -->
+            <div>
+                <h3>All Student Applications</h3>
+                <button @click="fetchAllApplications">Refresh List</button>
+                <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Roll Number</th>
+                            <th>Company</th>
+                            <th>Drive Title</th>
+                            <th>Applied Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="app in allApplications" :key="app.id">
+                            <td>{{ app.student_name }}</td>
+                            <td>{{ app.student_roll }}</td>
+                            <td>{{ app.company_name }}</td>
+                            <td>{{ app.job_title }}</td>
+                            <td>{{ app.applied_on }}</td>
+                            <td>{{ app.status }}</td>
+                        </tr>
+                        <tr v-if="allApplications.length === 0">
+                            <td colspan="6">No student applications found.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     `,
     created() {
         this.fetchAdminData();
+        this.fetchAllStudents();
+        this.fetchAllApplications();
     },
     methods: {
+        async handleLogout() {
+            const res = await fetch('/api/auth/logout', { method: 'POST' });
+            if (res.ok) {
+                this.$router.push('/');
+            }
+        },
         async fetchAdminData() {
-            console.log("Fetching admin portal statistics and approvals...");
-            try {
-                const statsres = await fetch('/api/admin/stats');
-                if (statsres.ok) {
-                    const statsdata = await statsres.json();
-                    this.stats = statsdata.stats;
-                } else if (statsres.status === 403) {
-                    this.$router.push('/');
-                    return;
-                }
+            const statsRes = await fetch('/api/admin/stats');
+            if (statsRes.ok) {
+                const data = await statsRes.json();
+                this.stats = data.stats;
+            } else if (statsRes.status === 403) {
+                this.$router.push('/');
+                return;
+            }
 
-                const compres = await fetch('/api/admin/pending-recruiters');
-                if (compres.ok) {
-                    const compdata = await compres.json();
-                    this.pendingCompanies = compdata.pending_recruiters;
-                }
+            const compRes = await fetch('/api/admin/pending-recruiters');
+            if (compRes.ok) {
+                const data = await compRes.json();
+                this.pendingCompanies = data.pending_recruiters;
+            }
 
-                const driveres = await fetch('/api/admin/pending-drives');
-                if (driveres.ok) {
-                    const drivedata = await driveres.json();
-                    this.pendingDrives = drivedata.pending_drives;
-                }
-            } catch (error) {
-                console.error("error fetching admin data:", error);
+            const driveRes = await fetch('/api/admin/pending-drives');
+            if (driveRes.ok) {
+                const data = await driveRes.json();
+                this.pendingDrives = data.pending_drives;
             }
         },
-
+        async fetchAllStudents() {
+            const res = await fetch('/api/admin/students');
+            if (res.ok) {
+                const data = await res.json();
+                this.allStudents = data.students;
+            }
+        },
+        async fetchAllApplications() {
+            const res = await fetch('/api/admin/applications');
+            if (res.ok) {
+                const data = await res.json();
+                this.allApplications = data.applications;
+            }
+        },
         async approveCompany(id) {
-            console.log("Approving company ID:", id);
-            try {
-                const response = await fetch(`/api/admin/approve-recruiter/${id}`, { method: 'POST' });
-                const data = await response.json();
-                if (response.ok) {
-                    alert("Recruiter approved successfully");
-                    this.fetchAdminData();
-                } else {
-                    alert(data.message || "Failed to approve recruiter.");
-                }
-            } catch (error) {
-                console.error("error approving company:", error);
-                alert("Server connection failed during company approval.");
+            const res = await fetch(`/api/admin/approve-recruiter/${id}`, { method: 'POST' });
+            if (res.ok) this.fetchAdminData();
+        },
+        async rejectCompany(id) {
+            if (!confirm("Reject company registration?")) return;
+            const res = await fetch(`/api/admin/reject-recruiter/${id}`, { method: 'POST' });
+            if (res.ok) this.fetchAdminData();
+        },
+        async approveDrive(id) {
+            const res = await fetch(`/api/admin/approve-drive/${id}`, { method: 'POST' });
+            if (res.ok) this.fetchAdminData();
+        },
+        async rejectDrive(id) {
+            if (!confirm("Reject placement drive?")) return;
+            const res = await fetch(`/api/admin/reject-drive/${id}`, { method: 'POST' });
+            if (res.ok) this.fetchAdminData();
+        },
+        async handleSearch() {
+            if (!this.searchQuery) return;
+            const res = await fetch(`/api/admin/search?query=${encodeURIComponent(this.searchQuery)}`);
+            if (res.ok) {
+                const data = await res.json();
+                this.searchResults = { students: data.students, companies: data.companies };
+                this.isSearching = true;
             }
         },
-
-        async approveDrive(id) {
-            console.log("Approving placement drive ID:", id);
-            try {
-                const response = await fetch(`/api/admin/approve-drive/${id}`, { method: 'POST' });
-                const data = await response.json();
-                if (response.ok) {
-                    alert("Placement drive approved");
-                    this.fetchAdminData();
-                } else {
-                    alert(data.message || "Failed to approve drive.");
-                }
-            } catch (error) {
-                console.error("error approving drive:", error);
-                alert("Server connection failed during drive approval.");
+        clearSearch() {
+            this.searchQuery = '';
+            this.searchResults = { students: [], companies: [] };
+            this.isSearching = false;
+        },
+        async toggleUserStatus(userId) {
+            const res = await fetch(`/api/admin/toggle-user-status/${userId}`, { method: 'POST' });
+            if (res.ok) {
+                if (this.isSearching) this.handleSearch();
+                this.fetchAllStudents();
             }
         }
     }

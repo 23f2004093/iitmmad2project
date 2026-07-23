@@ -67,13 +67,13 @@ export default {
                         password: this.password
                     },
                     profile_data: {
-                        companyName: this.companyName,
-                        hrContact: this.hrContact,
+                        company_name: this.companyName,
+                        hr_contact: this.hrContact,
                         website: this.website,
                         description: this.description
                     }
                 };
-                const response = await fetch('/api/auth/register/company', {
+                const response = await fetch('/api/auth/register/recruiter', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -84,7 +84,7 @@ export default {
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert("Registration successful! Please sign in.");
+                    alert("Registration successful! Please await Admin approval before logging in.");
                     this.$router.push('/');
                 } else {
                     this.errorMessage = data.message || "Registration failed";
