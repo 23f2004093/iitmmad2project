@@ -1,28 +1,53 @@
 import os
+
 from datetime import datetime, timedelta
+
 from app import celery_app
+
 from database import db
+
 from models.user import StudentProfile, CompanyProfile
+
 from models.job import Job
+
 from models.application import Application
 
+
+
 @celery_app.task(name="tasks.monthly_report.generate_monthly_report")
+
 def generate_monthly_report():
+
     now = datetime.utcnow()
+
     first_day_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     last_day_prev_month = first_day_this_month - timedelta(days=1)
+
     start_prev_month = last_day_prev_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     
+
     drives_conducted = Job.query.filter(Job.created_on >= start_prev_month, Job.created_on < first_day_this_month).count()
+
     applications_submitted = Application.query.filter(Application.applied_on >= start_prev_month, Application.applied_on < first_day_this_month).count()
+
     students_selected = Application.query.filter(Application.status == "selected", Application.applied_on >= start_prev_month, Application.applied_on < first_day_this_month).count()
+
     
+
     total_students = StudentProfile.query.count()
+
     total_companies = CompanyProfile.query.filter_by(is_approved=True).count()
+
     
+
     month_name = start_prev_month.strftime("%B %Y")
+
     file_month = start_prev_month.strftime("%Y_%m")
+
     
+
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -56,16 +81,31 @@ def generate_monthly_report():
 </html>
 """
 
+
+
     reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads", "reports"))
+
     os.makedirs(reports_dir, exist_ok=True)
+
     report_filename = f"monthly_report_{file_month}.html"
+
     filepath = os.path.join(reports_dir, report_filename)
+
     
+
     with open(filepath, mode="w", encoding="utf-8") as f:
+
         f.write(html_content)
+
         
+
     log_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads", "notifications.log"))
+
     with open(log_path, mode="a", encoding="utf-8") as log_file:
+
         log_file.write(f"[{now.isoformat()}] REPORT GENERATED: Monthly placement report for {month_name} generated at reports/{report_filename}\n")
+
         
+
     return report_filename
+

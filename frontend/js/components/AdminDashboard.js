@@ -12,6 +12,10 @@ export default {
             pendingDrives: [],
             allApplications: [],
             allStudents: [],
+            allDrives: [],
+            selectedDriveId: null,
+            selectedDriveTitle: '',
+            driveApplicants: [],
             searchQuery: '',
             searchResults: {
                 students: [],
@@ -218,12 +222,85 @@ export default {
                     </tbody>
                 </table>
             </div>
+            <hr>
+
+            <!-- All Placement Drives Table -->
+            <div>
+                <h3>All Placement Drives</h3>
+                <button @click="fetchAllDrives">Refresh Drives</button>
+                <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>Job Title</th>
+                            <th>Company</th>
+                            <th>Package</th>
+                            <th>Min CGPA</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                            <th>Applicants Count</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="d in allDrives" :key="d.id">
+                            <td><strong>{{ d.title }}</strong></td>
+                            <td>{{ d.company_name }}</td>
+                            <td>{{ d.package_ctc }}</td>
+                            <td>{{ d.min_cgpa }}</td>
+                            <td>{{ d.deadline }}</td>
+                            <td>{{ d.status }}</td>
+                            <td>{{ d.applicant_count }}</td>
+                            <td>
+                                <button @click="viewDriveApplicants(d.id, d.title)">View Applicants</button>
+                            </td>
+                        </tr>
+                        <tr v-if="allDrives.length === 0">
+                            <td colspan="8">No placement drives found.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <hr>
+
+            <!-- Drive Applicants Directory (Admin View) -->
+            <div v-if="selectedDriveId">
+                <h3>Applicants for Drive: {{ selectedDriveTitle }}</h3>
+                <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%; margin-top: 10px;">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Roll Number</th>
+                            <th>Department</th>
+                            <th>CGPA</th>
+                            <th>Resume</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="app in driveApplicants" :key="app.application_id">
+                            <td>{{ app.student_name }}</td>
+                            <td>{{ app.roll_number }}</td>
+                            <td>{{ app.department }}</td>
+                            <td>{{ app.cgpa }}</td>
+                            <td>
+                                <a v-if="app.resume_path" :href="'/' + app.resume_path" target="_blank">View PDF</a>
+                                <span v-else>No PDF</span>
+                            </td>
+                            <td><strong>{{ app.status }}</strong></td>
+                        </tr>
+                        <tr v-if="driveApplicants.length === 0">
+                            <td colspan="6">No applications submitted for this drive yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     `,
     created() {
         this.fetchAdminData();
         this.fetchAllStudents();
         this.fetchAllApplications();
+        this.fetchAllDrives();
     },
     methods: {
         async handleLogout() {
@@ -305,6 +382,22 @@ export default {
             if (res.ok) {
                 if (this.isSearching) this.handleSearch();
                 this.fetchAllStudents();
+            }
+        },
+        async fetchAllDrives() {
+            const res = await fetch('/api/admin/drives');
+            if (res.ok) {
+                const data = await res.json();
+                this.allDrives = data.drives;
+            }
+        },
+        async viewDriveApplicants(jobId, title) {
+            this.selectedDriveId = jobId;
+            this.selectedDriveTitle = title;
+            const res = await fetch(`/api/admin/drives/${jobId}/applications`);
+            if (res.ok) {
+                const data = await res.json();
+                this.driveApplicants = data.applicants;
             }
         }
     }

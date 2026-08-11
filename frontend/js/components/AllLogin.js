@@ -46,7 +46,7 @@ export default {
             this.errorMessage = '';
             
             try {
-                // 1. Send login credentials to the Flask route
+                
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: {
@@ -58,11 +58,11 @@ export default {
                     })
                 });
 
-                // 2. Parse the JSON response
+                
                 const data = await response.json();
 
                 if (response.ok) {
-                    // 3. Redirect the browser to the correct dashboard based on user role
+                    
                     if (data.role === 'admin') {
                         this.$router.push('/dashboard/admin');
                     } else if (data.role === 'student') {
@@ -71,7 +71,7 @@ export default {
                         this.$router.push('/dashboard/company');
                     }
                 } else {
-                    // Display error message from backend
+                    
                     this.errorMessage = data.message || "Login failed";
                 }
             } catch (error) {

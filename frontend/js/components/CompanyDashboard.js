@@ -17,7 +17,9 @@ export default {
                 package_ctc: '',
                 deadline: '',
                 min_cgpa: 0.0
-            }
+            },
+            isEditing: false,
+            editingJobId: null
         };
     },
     template: `
@@ -38,10 +40,10 @@ export default {
             </p>
             <hr v-if="!company.is_approved">
 
-            <!-- Create Placement Drive -->
+            <!-- Create or Edit Placement Drive -->
             <div>
-                <h3>Create New Placement Drive</h3>
-                <form @submit.prevent="createDrive">
+                <h3>{{ isEditing ? "Edit Placement Drive" : "Create New Placement Drive" }}</h3>
+                <form @submit.prevent="submitDrive">
                     <div style="margin-bottom: 8px;">
                         <input v-model="newDrive.title" type="text" placeholder="Job Title (e.g. Software Engineer)" required :disabled="!company.is_approved">
                         <input v-model="newDrive.package_ctc" type="text" placeholder="Package CTC (e.g. 12 LPA)" required :disabled="!company.is_approved">
@@ -57,7 +59,8 @@ export default {
                     <div style="margin-bottom: 8px;">
                         <textarea v-model="newDrive.description" placeholder="Job Description..." rows="3" style="width: 100%; max-width: 500px;" required :disabled="!company.is_approved"></textarea>
                     </div>
-                    <button type="submit" :disabled="!company.is_approved">Post Placement Drive</button>
+                    <button type="submit" :disabled="!company.is_approved">{{ isEditing ? "Save Changes" : "Post Placement Drive" }}</button>
+                    <button v-if="isEditing" type="button" @click="cancelEdit" style="margin-left: 8px;">Cancel</button>
                 </form>
             </div>
             <hr>
@@ -89,7 +92,10 @@ export default {
                             <td>{{ drive.applicant_count }}</td>
                             <td>{{ drive.status }}</td>
                             <td>
-                                <button @click="viewApplicants(drive.id, drive.title)">View Applicants</button>
+                                <button @click="viewApplicants(drive.id, drive.title)">Applicants</button>
+                                <button :disabled="drive.status === 'closed'" @click="startEdit(drive)" style="margin-left: 4px;">Edit</button>
+                                <button v-if="drive.status !== 'closed'" @click="closeDrive(drive.id)" style="margin-left: 4px;">Close</button>
+                                <button @click="deleteDrive(drive.id)" style="margin-left: 4px; color: red;">Delete</button>
                             </td>
                         </tr>
                         <tr v-if="drives.length === 0">
@@ -160,6 +166,13 @@ export default {
                 this.$router.push('/');
             }
         },
+        submitDrive() {
+            if (this.isEditing) {
+                this.updateDrive();
+            } else {
+                this.createDrive();
+            }
+        },
         async createDrive() {
             const res = await fetch('/api/companies/jobs', {
                 method: 'POST',
@@ -173,6 +186,64 @@ export default {
                 this.fetchCompanyData();
             } else {
                 alert(data.message || "Failed to create drive.");
+            }
+        },
+        startEdit(drive) {
+            this.isEditing = true;
+            this.editingJobId = drive.id;
+            this.newDrive = {
+                title: drive.title,
+                description: drive.description,
+                job_type: drive.job_type,
+                package_ctc: drive.package_ctc,
+                deadline: drive.deadline,
+                min_cgpa: drive.min_cgpa
+            };
+        },
+        cancelEdit() {
+            this.isEditing = false;
+            this.editingJobId = null;
+            this.newDrive = { title: '', description: '', job_type: 'Full-Time', package_ctc: '', deadline: '', min_cgpa: 0.0 };
+        },
+        async updateDrive() {
+            const res = await fetch(`/api/companies/jobs/${this.editingJobId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.newDrive)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                this.cancelEdit();
+                this.fetchCompanyData();
+            } else {
+                alert(data.message || "Failed to update drive.");
+            }
+        },
+        async closeDrive(id) {
+            if (!confirm("Are you sure you want to close this placement drive? Students will no longer be able to see or apply for it.")) return;
+            const res = await fetch(`/api/companies/jobs/${id}/close`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                this.fetchCompanyData();
+            } else {
+                alert(data.message || "Failed to close drive.");
+            }
+        },
+        async deleteDrive(id) {
+            if (!confirm("Are you sure you want to delete this placement drive? This will permanently remove the drive and all applications submitted to it.")) return;
+            const res = await fetch(`/api/companies/jobs/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                if (this.selectedJobId === id) {
+                    this.selectedJobId = null;
+                    this.applicants = [];
+                }
+                this.fetchCompanyData();
+            } else {
+                alert(data.message || "Failed to delete drive.");
             }
         },
         async viewApplicants(jobId, title) {

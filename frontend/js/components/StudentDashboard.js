@@ -14,8 +14,7 @@ export default {
             resumeFile: null,
             searchQuery: '',
             filterEligibility: 'all',
-            exporting: false,
-            exportStatusText: ''
+            exporting: false
         };
     },
     computed: {
@@ -44,11 +43,6 @@ export default {
                     </button>
                     <button @click="handleLogout" class="btn-logout">Logout</button>
                 </div>
-            </div>
-
-            <div v-if="exporting" class="alert alert-info py-2 mb-4 d-flex justify-content-between align-items-center">
-                <span><strong>CSV Export Status:</strong> {{ exportStatusText }}</span>
-                <span class="spinner-border spinner-border-sm" role="status"></span>
             </div>
 
             <div class="row">
@@ -111,7 +105,7 @@ export default {
                             </div>
                         </div>
 
-                        <div v-for="drive in filteredDrives" :key="drive.id" class="border-bottom pb-3 mb-3">
+                        <div v-for="drive in drives" :key="drive.id" class="border-bottom pb-3 mb-3">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h5 class="fw-bold mb-1 text-primary">{{ drive.title }}</h5>
@@ -244,7 +238,6 @@ export default {
         },
         async triggerCSVExport() {
             this.exporting = true;
-            this.exportStatusText = 'Queuing asynchronous Celery export task...';
             try {
                 const response = await fetch('/api/students/export-applications', {
                     method: 'POST'
@@ -252,14 +245,12 @@ export default {
                 const data = await response.json();
                 if (response.ok && data.task_id) {
                     const taskId = data.task_id;
-                    this.exportStatusText = 'Export task processing in background queue...';
                     const interval = setInterval(async () => {
                         try {
                             const statusRes = await fetch(`/api/students/export-status/${taskId}`);
                             const statusData = await statusRes.json();
                             if (statusData.status === 'success') {
                                 clearInterval(interval);
-                                this.exportStatusText = 'Task complete! Downloading file...';
                                 setTimeout(() => {
                                     this.exporting = false;
                                     const a = document.createElement('a');
