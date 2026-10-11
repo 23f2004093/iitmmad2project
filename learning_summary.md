@@ -7,7 +7,7 @@ This file serves as a memory link between the previous chat session and the new 
 ## 1. Project Background & Requirements
 *   **Project Name**: Placement Portal (V2)
 *   **Target Repo URL**: `https://github.com/23f2004093/iitmmad2project.git`
-*   **Current Workspace**: `C:\Users\bachc\Downloads\projectiitm` (Working tree is clean, ready for edits)
+*   **Current Workspace**: `C:\Users\bachc\Downloads\projectiitm` 
 *   **Technology Stack**:
     *   **Backend**: Flask (Python) with Flask-SQLAlchemy (SQLite)
     *   **Frontend**: Vue.js 3 via CDN (using native browser ES Modules with `import`/`export` syntax, no build step, index.html is entry point)
